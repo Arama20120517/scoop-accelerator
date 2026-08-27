@@ -11,7 +11,7 @@ Scoop 下载加速器. 支持将 GitHub、SourceForge、Node.js 的请求重定�
 Gitee:
 
 ```powershell
-scoop bucket add sa https://gitee.com/arama0517/scoop-accelerator
+scoop bucket add sa https://gitee.com/Arama20120517/scoop-accelerator
 ```
 
 GitHub (可能无法连接):
