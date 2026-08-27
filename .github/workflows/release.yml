@@ -10,7 +10,6 @@ jobs:
     name: Release
     runs-on: windows-latest
     permissions:
-      actions: write
       contents: write
     if: github.actor != 'renovate[bot]'
     steps:
@@ -25,22 +24,7 @@ jobs:
           files: scoop-accelerator.psm1
           generate_release_notes: true
 
-      - name: Update manifest
-        id: update
-        run: |
-          $path = "${{ github.workspace }}\bucket\scoop-accelerator.json"
-
-          $manifest = Get-Content $path -Raw | ConvertFrom-Json
-
-          $manifest.version = "${{ github.ref_name }}" -replace '^v', ''
-          $manifest.url = "https://gitee.com/arama0517/scoop-accelerator/releases/download/${{ github.ref_name }}/scoop-accelerator.psm1"
-          $manifest.hash = (Get-FileHash -Path "${{ github.workspace }}\scoop-accelerator.psm1" -Algorithm SHA256).Hash.ToLower()
-
-          $manifest | ConvertTo-Json -Depth 10 | Set-Content $path -Encoding UTF8
-
-          Write-Host "sha=$(git rev-parse HEAD)" | Out-File -Append -FilePath $env:GITHUB_OUTPUT
-
-      - name: Commit & Push
-        uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
-        with:
-          commit_message: "chore(manifest): update to ${{ github.ref_name }}"
+      - name: Excavate
+        uses: ScoopInstaller/GithubActions@5bceeda181721d9d10a18fdcc3ddca6f33467ae6 # v3.0.0
+        env:
+          SKIP_UPDATED: 1
