@@ -11,26 +11,33 @@ Scoop 下载加速器. 支持将 GitHub、SourceForge、Node.js 的请求重定�
 Gitee:
 
 ```powershell
-scoop bucket add sa https://gitee.com/Arama20120517/scoop-accelerator
+scoop bucket add arama https://gitee.com/Arama20120517/scoop-bucket
 ```
 
 GitHub (可能无法连接):
 
 ```powershell
-scoop bucket add sa https://github.com/Arama20120517/scoop-accelerator
+scoop bucket add arama https://github.com/Arama20120517/scoop-bucket
 ```
 
-### 2. 安装
+### 2. 安装应用
 
 ```powershell
-scoop install sa/scoop-accelerator
+scoop install arama/scoop-accelerator
 ```
 
 ## 卸载
 
+### 1. 卸载应用
+
 ```powershell
 scoop uninstall scoop-accelerator
-scoop bucket rm sa
+```
+
+### 2. 卸载 Bucket
+
+```powershell
+scoop bucket rm arama
 ```
 
 ## 支持的配置
