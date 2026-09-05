@@ -58,7 +58,6 @@ function script:Repair-URL {
     return $url
 }
 
-
 function script:Add-Handler {
     param([string]$Name, [scriptblock]$Logic)
     $HandlerName = "${Name}_sa_handler"
@@ -83,3 +82,16 @@ Add-Handler -Name 'add_bucket' -Logic {
     if (get_config bucket_proxy_enabled $true) { $repo = Repair-URL $repo }
     return . ${function:add_bucket} $name $repo
 }
+
+Add-Handler -Name 'shim' -Logic {
+    param($path, $global, $name, $arg)
+    if ($path -eq ((versiondir 'scoop' 'current') + '\bin\scoop.ps1')) {
+        Get-ChildItem "$(appdir scoop-accelerator)\current\shims" | ForEach-Object {
+            Copy-Item $_.FullName "$scoopdir\shims" -Force
+        }
+        return
+    }
+    return . ${function:shim} $path $global $name $arg
+}
+
+
