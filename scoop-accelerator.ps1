@@ -65,6 +65,20 @@ function script:Add-Handler {
     Set-Alias -Name $Name -Value $HandlerName -Scope Script -Option ReadOnly -Force
 }
 
+function script:Update-Shims([switch]$EnableI18N) {
+    Get-ChildItem "$(appdir scoop-accelerator)\current\template" | ForEach-Object {
+        $content = Get-Content $_.FullName -Raw
+        $content = $content.Replace('${scoop.ps1}', ". '$(appdir scoop)\current\bin\scoop.ps1'")
+        $content = $content.Replace('${scoop-accelerator.ps1}', ". '$(appdir scoop-accelerator)\current\scoop-accelerator.ps1'")
+        if ($EnableI18N) {
+            $content = $content.Replace('${scoop-i18n.ps1}', ". '$(appdir 'abgox.scoop-i18n')\current\app\scoop-i18n.ps1'")
+        } else {
+            $content = $content.Replace('${scoop-i18n.ps1}', '')
+        }
+        [System.IO.File]::WriteAllText("$(appdir scoop-accelerator)\current\shims\$($_.Name)", ($content -join [System.Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
+    }
+}
+
 Add-Handler -Name 'Url_Proxy' -Logic {
     param($url)
     return $url
@@ -94,4 +108,47 @@ Add-Handler -Name 'shim' -Logic {
     return . ${function:shim} $path $global $name $arg
 }
 
+Add-Handler -Name 'Copy-Item' -Logic {
+    [CmdletBinding()]
+    param(
+        [Parameter(Position = 0, ValueFromPipeline = $true)]$Path,
+        [Parameter(Position = 1)]$Destination,
+        [switch]$Bypass,
+        [Parameter(ValueFromRemainingArguments = $true)]$Rest
+    )
+    process {
+        if ($Path -like '*abgox.scoop-i18n*\app\shims\*' -and $Destination -like "$scoopdir\shims*" -and -not $Bypass) {
+            $Path = "$scoopdir\apps\scoop-accelerator\current\shims\$([IO.Path]::GetFileName($Path))"
+            Update-Shims -EnableI18N
+        } elseif ($Path -like "$scoopdir\shims*" -and $Destination -like '*abgox.scoop-i18n*\app\original\*') {
+            $Path = "$scoopdir\apps\scoop-accelerator\current\original\$([IO.Path]::GetFileName($Path))"
+        }
 
+        $cmd = "Microsoft.PowerShell.Management\Copy-Item -Path '$Path' -Destination '$Destination'"
+        if ($Rest) { $cmd += ' ' + ($Rest -join ' ') }
+
+        Invoke-Expression $cmd
+    }
+}
+
+Add-Handler -Name 'Move-Item' -Logic {
+    [CmdletBinding()]
+    param(
+        [Parameter(Position = 0, ValueFromPipeline = $true)]$Path,
+        [Parameter(Position = 1)]$Destination,
+        [Parameter(ValueFromRemainingArguments = $true)]$Rest
+    )
+    process {
+        if ($Path -like '*abgox.scoop-i18n*\app\original\*' -and $Destination -like "$scoopdir\shims*") {
+            $Path = "$scoopdir\apps\scoop-accelerator\current\shims\$([IO.Path]::GetFileName($Path))"
+            $cmd = "Microsoft.PowerShell.Management\Copy-Item -Path '$Path' -Destination '$Destination'"
+            Update-Shims
+        } else {
+            $cmd = "Microsoft.PowerShell.Management\Move-Item -Path '$Path' -Destination '$Destination'"
+        }
+
+        if ($Rest) { $cmd += ' ' + ($Rest -join ' ') }
+
+        Invoke-Expression $cmd
+    }
+}
