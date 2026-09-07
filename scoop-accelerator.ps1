@@ -119,7 +119,7 @@ Add-Handler -Name 'Copy-Item' -Logic {
         [psobject]$FromSession, [psobject]$ToSession
     )
     process {
-        if ($Path -like '*abgox.scoop-i18n*\app\shims\*' -and $Destination -like "$scoopdir\shims*") {
+        if ($Path -like '*abgox.scoop-i18n*\app\shims*' -and $Destination -like "$scoopdir\shims*") {
             $PSBoundParameters['Path'] = "$scoopdir\apps\scoop-accelerator\current\shims\$([IO.Path]::GetFileName($Path))"
             Update-Shims -EnableI18N
         }
