@@ -107,48 +107,45 @@ Add-Handler -Name 'shim' -Logic {
     }
     return . ${function:shim} $path $global $name $arg
 }
-
 Add-Handler -Name 'Copy-Item' -Logic {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess, DefaultParameterSetName = 'Path')]
     param(
-        [Parameter(Position = 0, ValueFromPipeline = $true)]$Path,
-        [Parameter(Position = 1)]$Destination,
-        [switch]$Bypass,
-        [Parameter(ValueFromRemainingArguments = $true)]$Rest
+        [Parameter(ParameterSetName = 'Path', Position = 0, ValueFromPipeline = $true)][string[]]$Path,
+        [Parameter(ParameterSetName = 'LiteralPath', Position = 0, ValueFromPipelineByPropertyName = $true)][Alias('PSPath')][string[]]$LiteralPath,
+        [Parameter(Position = 1)][string]$Destination,
+        [switch]$Container, [switch]$Force, [switch]$Recurse, [switch]$PassThru,
+        [string]$Filter, [string[]]$Include, [string[]]$Exclude,
+        [pscredential]$Credential, [switch]$UseTransaction,
+        [psobject]$FromSession, [psobject]$ToSession
     )
     process {
-        if ($Path -like '*abgox.scoop-i18n*\app\shims\*' -and $Destination -like "$scoopdir\shims*" -and -not $Bypass) {
-            $Path = "$scoopdir\apps\scoop-accelerator\current\shims\$([IO.Path]::GetFileName($Path))"
+        if ($Path -like '*abgox.scoop-i18n*\app\shims\*' -and $Destination -like "$scoopdir\shims*") {
+            $PSBoundParameters['Path'] = "$scoopdir\apps\scoop-accelerator\current\shims\$([IO.Path]::GetFileName($Path))"
             Update-Shims -EnableI18N
-        } elseif ($Path -like "$scoopdir\shims*" -and $Destination -like '*abgox.scoop-i18n*\app\original\*') {
-            $Path = "$scoopdir\apps\scoop-accelerator\current\original\$([IO.Path]::GetFileName($Path))"
         }
-
-        $cmd = "Microsoft.PowerShell.Management\Copy-Item -Path '$Path' -Destination '$Destination'"
-        if ($Rest) { $cmd += ' ' + ($Rest -join ' ') }
-
-        Invoke-Expression $cmd
+        return (Microsoft.PowerShell.Management\Copy-Item @PSBoundParameters)
     }
 }
 
 Add-Handler -Name 'Move-Item' -Logic {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess, DefaultParameterSetName = 'Path')]
     param(
-        [Parameter(Position = 0, ValueFromPipeline = $true)]$Path,
-        [Parameter(Position = 1)]$Destination,
-        [Parameter(ValueFromRemainingArguments = $true)]$Rest
+        [Parameter(ParameterSetName = 'Path', Position = 0, ValueFromPipeline = $true)][string[]]$Path,
+        [Parameter(ParameterSetName = 'LiteralPath', Position = 0, ValueFromPipelineByPropertyName = $true)][Alias('PSPath')][string[]]$LiteralPath,
+        [Parameter(Position = 1)][string]$Destination,
+        [switch]$Force, [switch]$PassThru,
+        [string]$Filter, [string[]]$Include, [string[]]$Exclude,
+        [pscredential]$Credential, [switch]$UseTransaction
     )
     process {
-        if ($Path -like '*abgox.scoop-i18n*\app\original\*' -and $Destination -like "$scoopdir\shims*") {
-            $Path = "$scoopdir\apps\scoop-accelerator\current\shims\$([IO.Path]::GetFileName($Path))"
-            $cmd = "Microsoft.PowerShell.Management\Copy-Item -Path '$Path' -Destination '$Destination'"
+        if ($Path -like '*abgox.scoop-i18n*\app\original*' -and $Destination -like "$scoopdir\shims*") {
             Update-Shims
-        } else {
-            $cmd = "Microsoft.PowerShell.Management\Move-Item -Path '$Path' -Destination '$Destination'"
+            $PSBoundParameters['Path'] = "$scoopdir\apps\scoop-accelerator\current\shims\$([IO.Path]::GetFileName($Path))"
+            return (Microsoft.PowerShell.Management\Copy-Item @PSBoundParameters)
+        } elseif ($Path -like "$scoopdir\shims*" -and $Destination -like '*abgox.scoop-i18n*\app\original*') {
+            $PSBoundParameters['Path'] = "$scoopdir\apps\scoop-accelerator\current\original\$([IO.Path]::GetFileName($Path))"
+            return (Microsoft.PowerShell.Management\Copy-Item @PSBoundParameters)
         }
-
-        if ($Rest) { $cmd += ' ' + ($Rest -join ' ') }
-
-        Invoke-Expression $cmd
+        return (Microsoft.PowerShell.Management\Move-Item @PSBoundParameters)
     }
 }
