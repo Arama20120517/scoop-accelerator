@@ -107,45 +107,36 @@ Add-Handler -Name 'shim' -Logic {
     }
     return . ${function:shim} $path $global $name $arg
 }
-Add-Handler -Name 'Copy-Item' -Logic {
-    [CmdletBinding(SupportsShouldProcess, DefaultParameterSetName = 'Path')]
-    param(
-        [Parameter(ParameterSetName = 'Path', Position = 0, ValueFromPipeline = $true)][string[]]$Path,
-        [Parameter(ParameterSetName = 'LiteralPath', Position = 0, ValueFromPipelineByPropertyName = $true)][Alias('PSPath')][string[]]$LiteralPath,
-        [Parameter(Position = 1)][string]$Destination,
-        [switch]$Container, [switch]$Force, [switch]$Recurse, [switch]$PassThru,
-        [string]$Filter, [string[]]$Include, [string[]]$Exclude,
-        [pscredential]$Credential, [switch]$UseTransaction,
-        [psobject]$FromSession, [psobject]$ToSession
-    )
-    process {
-        if ($Path -like '*abgox.scoop-i18n*\app\shims*' -and $Destination -like "$scoopdir\shims*") {
-            $PSBoundParameters['Path'] = "$scoopdir\apps\scoop-accelerator\current\shims\$([IO.Path]::GetFileName($Path))"
-            Update-Shims -EnableI18N
-        }
-        return (Microsoft.PowerShell.Management\Copy-Item @PSBoundParameters)
-    }
-}
 
-Add-Handler -Name 'Move-Item' -Logic {
-    [CmdletBinding(SupportsShouldProcess, DefaultParameterSetName = 'Path')]
+Add-Handler -Name 'Invoke-HookScript' -Logic {
+    [CmdletBinding()]
     param(
-        [Parameter(ParameterSetName = 'Path', Position = 0, ValueFromPipeline = $true)][string[]]$Path,
-        [Parameter(ParameterSetName = 'LiteralPath', Position = 0, ValueFromPipelineByPropertyName = $true)][Alias('PSPath')][string[]]$LiteralPath,
-        [Parameter(Position = 1)][string]$Destination,
-        [switch]$Force, [switch]$PassThru,
-        [string]$Filter, [string[]]$Include, [string[]]$Exclude,
-        [pscredential]$Credential, [switch]$UseTransaction
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('installer', 'pre_install', 'post_install', 'uninstaller', 'pre_uninstall', 'post_uninstall')]
+        [String] $HookType,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [PSCustomObject] $Manifest,
+        [Parameter(Mandatory = $true)]
+        [Alias('Arch', 'Architecture')]
+        [ValidateSet('32bit', '64bit', 'arm64')]
+        [string]
+        $ProcessorArchitecture
     )
-    process {
-        if ($Path -like '*abgox.scoop-i18n*\app\original*' -and $Destination -like "$scoopdir\shims*") {
+
+    if ($Manifest.homepage -eq 'https://scoop-i18n.abgox.com' -and $Manifest.autoupdate.url -eq 'https://github.com/abgox/scoop-i18n/archive/$matchSha.zip') {
+        if ($HookType -eq 'pre_install') {
+            # "    Move-Item \"$scoopdir\\shims\\$($_.Name)\" \"$dir\\app\\original\"",
+            $Manifest.pre_install[6] = '    Copy-Item "$scoopdir\apps\scoop-accelerator\current\original\$($_.Name)" "$dir\app\original" -Force'
+            # "Get-ChildItem \"$dir\\app\\shims\" | ForEach-Object {",
+            $Manifest.pre_install[12] = 'Get-ChildItem "$scoopdir\apps\scoop-accelerator\current\shims" | ForEach-Object {'
+            Update-Shims -EnableI18N
+        } elseif ($HookType -eq 'pre_uninstall') {
+            # "Get-ChildItem \"$dir\\app\\original\" | ForEach-Object {",
+            $Manifest.pre_uninstall[3] = 'Get-ChildItem "$scoopdir\apps\scoop-accelerator\current\shims" | ForEach-Object {'
             Update-Shims
-            $PSBoundParameters['Path'] = "$scoopdir\apps\scoop-accelerator\current\shims\$([IO.Path]::GetFileName($Path))"
-            return (Microsoft.PowerShell.Management\Copy-Item @PSBoundParameters)
-        } elseif ($Path -like "$scoopdir\shims*" -and $Destination -like '*abgox.scoop-i18n*\app\original*') {
-            $PSBoundParameters['Path'] = "$scoopdir\apps\scoop-accelerator\current\original\$([IO.Path]::GetFileName($Path))"
-            return (Microsoft.PowerShell.Management\Copy-Item @PSBoundParameters)
         }
-        return (Microsoft.PowerShell.Management\Move-Item @PSBoundParameters)
     }
+
+    return . ${function:Invoke-HookScript} -HookType $HookType -Manifest $Manifest -ProcessorArchitecture $ProcessorArchitecture
 }
