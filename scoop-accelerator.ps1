@@ -44,15 +44,18 @@ function script:Repair-URL {
     try {
         $ip = [System.Net.Dns]::GetHostAddresses(([System.Uri]$url).Host)[0]
         if (Test-IsPrivateOrLocalIP $ip) {
-            throw
+            success "local direct: $url"
+            return $url
         }
-
-        $ipInfo = Invoke-RestMethod -Uri "http://ip-api.com/json/$($ip.IPAddressToString)?fields=status,countryCode" -TimeoutSec 10
-        if ($ipInfo.status -eq 'success' -and $ipInfo.countryCode -ne 'CN') {
+        $ipInfo = Invoke-RestMethod -Uri "https://ip9.com.cn/get?ip=$($ip.IPAddressToString)" -TimeoutSec 10
+        if ($ipInfo.ret -eq 200 -and $ipInfo.data.country_code -ne 'cn') {
             success "proxy: $url"
             return $proxy_url + $url
         }
-    } catch {}
+    } catch {
+        success "fallback: $url"
+        return $url
+    }
 
     success "direct: $url"
     return $url
