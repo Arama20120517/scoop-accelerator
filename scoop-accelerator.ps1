@@ -4,7 +4,7 @@ try {
     return
 }
 
-function script:Test-IsPrivateOrLocalIP {
+function Script:Test-IsPrivateOrLocalIP {
     param([System.Net.IPAddress]$ip)
     if ([System.Net.IPAddress]::IsLoopback($ip)) { return $true }
 
@@ -23,52 +23,60 @@ function script:Test-IsPrivateOrLocalIP {
     return $false
 }
 
-function script:Repair-URL {
+function Script:Repair-URL {
     param([string]$url)
 
     $url = $url -replace 'https?://[^\s]*?(?=https?://)', ''
 
-    if ($url -match 'github\.com|githubusercontent\.com') {
-        success "github proxy: $url"
-        return (get_config github_proxy_url 'https://v4.gh-proxy.org/') + $url
-    } elseif ($url -match 'sourceforge\.net') {
-        success "sourceforge proxy: $url"
-        return (get_config sourceforge_proxy_url 'https://v4.gh-proxy.org/sourceforge/') + $url
-    } elseif ($url -match '^https?://nodejs\.org/dist/') {
-        success "nodejs proxy: $url"
-        return $url -replace '^https?://nodejs\.org/dist/', (get_config nodejs_proxy_url 'https://registry.npmmirror.com/-/binary/node/')
+    foreach ($property in $scoopConfig.PSObject.Properties) {
+        if ($property.Name -match '^scoop-accelerator-rule-(.+)$') {
+            $ruleName = $Matches[1]
+
+            $parts = $property.Value -split ' -> '
+            if ($parts.Count -ne 2) {
+                warn "检测到无效规则: $($property.Name)"
+                continue
+            }
+
+            $originPattern, $replacePattern = $parts
+            if ($url -match $originPattern) {
+                success "$ruleName proxy: $url"
+                return $url -replace $originPattern, $replacePattern
+            }
+        }
     }
 
-    $proxy_url = get_config proxy_url ((get_config url_proxy 'https://scoop.201704.xyz') + '/')
-
-    try {
-        $ip = [System.Net.Dns]::GetHostAddresses(([System.Uri]$url).Host)[0]
-        if (Test-IsPrivateOrLocalIP $ip) {
-            success "local direct: $url"
+    $proxy_url = get_config proxy_url
+    if ($proxy_url) {
+        try {
+            $ip = [System.Net.Dns]::GetHostAddresses(([System.Uri]$url).Host)[0]
+            if (Test-IsPrivateOrLocalIP $ip) {
+                success "local direct: $url"
+                return $url
+            }
+            $ipInfo = Invoke-RestMethod -Uri "https://ip9.com.cn/get?ip=$($ip.IPAddressToString)" -TimeoutSec 10
+            if ($ipInfo.ret -eq 200 -and $ipInfo.data.country_code -ne 'cn') {
+                success "proxy: $url"
+                return $proxy_url + $url
+            }
+        } catch {
+            success "fallback: $url"
             return $url
         }
-        $ipInfo = Invoke-RestMethod -Uri "https://ip9.com.cn/get?ip=$($ip.IPAddressToString)" -TimeoutSec 10
-        if ($ipInfo.ret -eq 200 -and $ipInfo.data.country_code -ne 'cn') {
-            success "proxy: $url"
-            return $proxy_url + $url
-        }
-    } catch {
-        success "fallback: $url"
-        return $url
     }
 
     success "direct: $url"
     return $url
 }
 
-function script:Add-Handler {
+function Script:Add-Handler {
     param([string]$Name, [scriptblock]$Logic)
     $HandlerName = "${Name}_sa_handler"
-    Set-Item -Path "Function:\script:$HandlerName" -Value $Logic -Force
+    Set-Item -Path "Function:\Script:$HandlerName" -Value $Logic -Force
     Set-Alias -Name $Name -Value $HandlerName -Scope Script -Option ReadOnly -Force
 }
 
-function script:Update-Shims([switch]$EnableI18N) {
+function Script:Update-Shims([switch]$EnableI18N) {
     Get-ChildItem "$(appdir scoop-accelerator)\current\template" | ForEach-Object {
         $content = Get-Content $_.FullName -Raw
         $content = $content.Replace('${scoop.ps1}', ". '$(appdir scoop)\current\bin\scoop.ps1'")

@@ -1,6 +1,6 @@
 # scoop-accelerator
 
-Scoop 下载加速器. 支持将 GitHub、SourceForge、Node.js 的请求重定向至国内高速镜像, 告别下载超时.
+Scoop 下载加速器. 支持按照自定义规则进行重定向.
 
 ## 安装
 
@@ -26,6 +26,23 @@ scoop bucket add arama https://github.com/Arama20120517/scoop-bucket
 scoop install arama/scoop-accelerator
 ```
 
+### 3. 设置规则
+
+本应用会识别 `scoop-accelerator-rule` 为开头的 `Scoop` 配置并按照 `原内容正则 -> 替换内容` 的格式进行替换
+
+如果你想要直接使用请运行以下命令:
+
+```powershell
+# GitHub
+scoop config scoop-accelerator-rule-github "^https://github.com -> https://v4.gh-proxy.org/https://github.com"
+scoop config scoop-accelerator-rule-github-raw "^https://raw.githubusercontent.com -> https://v4.gh-proxy.org/https://raw.githubusercontent.com"
+scoop config scoop-accelerator-rule-github-gist "^https://gist.githubusercontent.com -> https://v4.gh-proxy.org/https://gist.githubusercontent.com"
+# SourceForge
+scoop config scoop-accelerator-rule-sourceforge "^https://downloads.sourceforge.net -> https://v4.gh-proxy.org/sourceforge/https://downloads.sourceforge.net"
+# NodeJS
+scoop config scoop-accelerator-rule-nodejs "^https://nodejs.org/dist/ -> https://registry.npmmirror.com/-/binary/node/"
+```
+
 ## 卸载
 
 ### 1. 卸载应用
@@ -40,20 +57,28 @@ scoop uninstall scoop-accelerator
 scoop bucket rm arama
 ```
 
-## 支持的配置
+### 3. 删除规则
 
-> [!WARNING]
-> 请检查你的 URL 最后是否有一个 `/` 用于脚本拼接
+```powershell
+foreach ($property in $(scoop config).PSObject.Properties) {
+    if ($property.Name -like 'scoop-accelerator-rule-*') {
+        scoop config rm $property.Name
+    }
+}
+```
 
-请使用 `scoop config` 进行配置
+## 配置
 
-例如: `scoop config github_proxy_url "https://v4.gh-proxy.org/"`
+本应用使用 `scoop config` 进行配置
 
-| 配置项                   | 描述                                                                                                  | 默认值                                          |
-| ------------------------ | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `download_proxy_enabled` | 是否开启下载时自动替换镜像功能                                                                        | `$true`                                         |
-| `bucket_proxy_enabled`   | 是否开启添加 `Bucket` 时自动替换镜像功能                                                              | `$true`                                         |
-| `github_proxy_url`       | 用于 `github.com` 和 `*.githubusercontent.com` 的镜像网址                                             | `https://v4.gh-proxy.org/`                      |
-| `sourceforge_proxy_url`  | 用于 `*.sourceforge.net` 的镜像网址                                                                   | `https://v4.gh-proxy.org/sourceforge/`          |
-| `nodejs_proxy_url`       | 用于 `nodejs.org/dist` 的镜像网址                                                                     | `https://registry.npmmirror.com/-/binary/node/` |
-| `proxy_url`              | 如果不匹配上面的规则, 根据 ip 判断为国外时进行替换; 如果本配置和 `url_proxy` 同时存在, 优先使用本配置 | `https://scoop.201704.xyz/`                     |
+| 配置项                     | 描述                                             | 默认值  |
+| -------------------------- | ------------------------------------------------ | ------- |
+| `download_proxy_enabled`   | 是否开启下载时自动替换镜像功能                   | `$true` |
+| `bucket_proxy_enabled`     | 是否开启添加 `Bucket` 时自动替换镜像功能         | `$true` |
+| `scoop-accelerator-rule-*` | 按照 `原内容正则 -> 替换内容` 的格式进行替换     | 无      |
+| `proxy_url`                | 如果没有匹配到规则, 根据 ip 判断为国外时进行替换 | 无      |
+
+## 灵感来源
+
+- [scoop-tools](https://github.com/abgox/scoop-tools)
+- [scoop-i18n](https://github.com/abgox/scoop-i18n)
