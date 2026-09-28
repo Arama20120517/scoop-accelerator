@@ -30,18 +30,7 @@ scoop install arama/scoop-accelerator
 
 本应用会识别 `scoop-accelerator-rule` 为开头的 `Scoop` 配置并按照 `原内容正则 -> 替换内容` 的格式进行替换
 
-如果你想要直接使用请运行以下命令:
-
-```powershell
-# GitHub
-scoop config scoop-accelerator-rule-github "^https://github.com -> https://v4.gh-proxy.org/https://github.com"
-scoop config scoop-accelerator-rule-github-raw "^https://raw.githubusercontent.com -> https://v4.gh-proxy.org/https://raw.githubusercontent.com"
-scoop config scoop-accelerator-rule-github-gist "^https://gist.githubusercontent.com -> https://v4.gh-proxy.org/https://gist.githubusercontent.com"
-# SourceForge
-scoop config scoop-accelerator-rule-sourceforge "^https://downloads.sourceforge.net -> https://v4.gh-proxy.org/sourceforge/https://downloads.sourceforge.net"
-# NodeJS
-scoop config scoop-accelerator-rule-nodejs "^https://nodejs.org/dist/ -> https://registry.npmmirror.com/-/binary/node/"
-```
+如果你想要直接使用请直接运行安装完成后 `Notes` 的命令
 
 ## 卸载
 

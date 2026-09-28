@@ -76,7 +76,7 @@ function Script:Add-Handler {
     Set-Alias -Name $Name -Value $HandlerName -Scope Script -Option ReadOnly -Force
 }
 
-function Script:Update-Shims([switch]$EnableI18N) {
+function Script:Update-Shim([switch]$EnableI18N) {
     Get-ChildItem "$(appdir scoop-accelerator)\current\template" | ForEach-Object {
         $content = Get-Content $_.FullName -Raw
         $content = $content.Replace('${scoop.ps1}', ". '$(appdir scoop)\current\bin\scoop.ps1'")
@@ -93,6 +93,12 @@ function Script:Update-Shims([switch]$EnableI18N) {
 Add-Handler -Name 'Url_Proxy' -Logic {
     param($url)
     return $url
+}
+
+Add-Handler -Name 'url_manifest' -Logic {
+    param($url)
+    if (get_config download_proxy_enabled $true) { $url = Repair-URL $url }
+    return . ${function:url_manifest} $url
 }
 
 Add-Handler -Name 'handle_special_urls' -Logic {
@@ -141,11 +147,11 @@ Add-Handler -Name 'Invoke-HookScript' -Logic {
             $Manifest.pre_install[6] = '    Copy-Item "$scoopdir\apps\scoop-accelerator\current\original\$($_.Name)" "$dir\app\original" -Force'
             # "Get-ChildItem \"$dir\\app\\shims\" | ForEach-Object {",
             $Manifest.pre_install[12] = 'Get-ChildItem "$scoopdir\apps\scoop-accelerator\current\shims" | ForEach-Object {'
-            Update-Shims -EnableI18N
+            Update-Shim -EnableI18N
         } elseif ($HookType -eq 'pre_uninstall') {
             # "Get-ChildItem \"$dir\\app\\original\" | ForEach-Object {",
             $Manifest.pre_uninstall[3] = 'Get-ChildItem "$scoopdir\apps\scoop-accelerator\current\shims" | ForEach-Object {'
-            Update-Shims
+            Update-Shim
         }
     }
 
