@@ -118,12 +118,12 @@ scoop download uv
 如果启用了 `sa-download-proxy-enabled` 或者 `sa-bucket-proxy-enabled`时,
 在没有匹配到任何规则时将使用本配置替换下载链接
 
-应用会自动将配置中的 `$$url` 替换为下载链接
+应用会自动将配置中的 `{{url}}` 替换为下载链接
 
 例如:
 
 ```powershell
-scoop config sa-general-rule "https://example.com/$$url"
+scoop config sa-general-rule "https://example.com/{{url}}"
 
 scoop download uv
 # 下载链接将会被替换为: https://example.com/https://github.com/astral-sh/uv/releases/download/0.12.20/uv-x86_64-pc-windows-msvc.zip

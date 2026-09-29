@@ -46,8 +46,8 @@ function Script:Repair-URL {
         }
     }
 
-    $proxy_url = get_config sa-general-rule
-    if ($proxy_url) {
+    $rule = get_config sa-general-rule
+    if ($rule) {
         try {
             $ip = [System.Net.Dns]::GetHostAddresses(([System.Uri]$url).Host)[0]
             if (Test-IsPrivateOrLocalIP $ip) {
@@ -57,7 +57,7 @@ function Script:Repair-URL {
             $ipInfo = Invoke-RestMethod -Uri "https://ip9.com.cn/get?ip=$($ip.IPAddressToString)" -TimeoutSec 10
             if ($ipInfo.ret -eq 200 -and $ipInfo.data.country_code -ne 'cn') {
                 success "proxy: $url"
-                return $proxy_url + $url
+                return $rule -replace '{{url}}', $url
             }
         } catch {
             success "fallback: $url"
