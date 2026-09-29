@@ -29,7 +29,7 @@ function Script:Repair-URL {
     $url = $url -replace 'https?://[^\s]*?(?=https?://)', ''
 
     foreach ($property in $scoopConfig.PSObject.Properties) {
-        if ($property.Name -match '^scoop-accelerator-rule-(.+)$') {
+        if ($property.Name -match '^sa-rule-(.+)$') {
             $ruleName = $Matches[1]
 
             $parts = $property.Value -split ' -> '
@@ -46,7 +46,7 @@ function Script:Repair-URL {
         }
     }
 
-    $proxy_url = get_config proxy_url
+    $proxy_url = get_config sa-general-rule
     if ($proxy_url) {
         try {
             $ip = [System.Net.Dns]::GetHostAddresses(([System.Uri]$url).Host)[0]
@@ -97,20 +97,20 @@ Add-Handler -Name 'Url_Proxy' -Logic {
 
 Add-Handler -Name 'url_manifest' -Logic {
     param($url)
-    if (get_config download_proxy_enabled $true) { $url = Repair-URL $url }
+    if (get_config sa-download-enabled $true) { $url = Repair-URL $url }
     return . ${function:url_manifest} $url
 }
 
 Add-Handler -Name 'handle_special_urls' -Logic {
     param($url)
     $url = . ${function:handle_special_urls} $url
-    if (get_config download_proxy_enabled $true) { $url = Repair-URL $url }
+    if (get_config sa-download-enabled $true) { $url = Repair-URL $url }
     return $url
 }
 
 Add-Handler -Name 'add_bucket' -Logic {
     param($name, $repo)
-    if (get_config bucket_proxy_enabled $true) { $repo = Repair-URL $repo }
+    if (get_config sa-bucket-enabled $true) { $repo = Repair-URL $repo }
     return . ${function:add_bucket} $name $repo
 }
 
