@@ -1,6 +1,7 @@
 try {
     Microsoft.PowerShell.Core\Set-StrictMode -Off
-} catch {
+}
+catch {
     return
 }
 
@@ -59,7 +60,8 @@ function Script:Repair-URL {
                 success "proxy: $url"
                 return $rule -replace '{{url}}', $url
             }
-        } catch {
+        }
+        catch {
             success "fallback: $url"
             return $url
         }
@@ -83,7 +85,8 @@ function Script:Update-Shim([switch]$EnableI18N) {
         $content = $content.Replace('${scoop-accelerator.ps1}', ". '$(appdir scoop-accelerator)\current\scoop-accelerator.ps1'")
         if ($EnableI18N) {
             $content = $content.Replace('${scoop-i18n.ps1}', ". '$(appdir 'abgox.scoop-i18n')\current\app\scoop-i18n.ps1'")
-        } else {
+        }
+        else {
             $content = $content.Replace('${scoop-i18n.ps1}', '')
         }
         [System.IO.File]::WriteAllText("$(appdir scoop-accelerator)\current\shims\$($_.Name)", ($content -join [System.Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
@@ -125,6 +128,17 @@ Add-Handler -Name 'shim' -Logic {
     return . ${function:shim} $path $global $name $arg
 }
 
+Add-Handler -Name 'New-Shim' -Logic {
+    param($Path, $Global, $Name, $Arg)
+    if ($Path -eq ((versiondir 'scoop' 'current') + '\bin\scoop.ps1')) {
+        Get-ChildItem "$(appdir scoop-accelerator)\current\shims" | ForEach-Object {
+            Copy-Item $_.FullName "$scoopdir\shims" -Force
+        }
+        return
+    }
+    return . ${function:shim} $Path, $Global, $Name, $Arg
+}
+
 Add-Handler -Name 'Invoke-HookScript' -Logic {
     [CmdletBinding()]
     param(
@@ -148,7 +162,8 @@ Add-Handler -Name 'Invoke-HookScript' -Logic {
             # "Get-ChildItem \"$dir\\app\\shims\" | ForEach-Object {",
             $Manifest.pre_install[12] = 'Get-ChildItem "$scoopdir\apps\scoop-accelerator\current\shims" | ForEach-Object {'
             Update-Shim -EnableI18N
-        } elseif ($HookType -eq 'pre_uninstall') {
+        }
+        elseif ($HookType -eq 'pre_uninstall') {
             # "Get-ChildItem \"$dir\\app\\original\" | ForEach-Object {",
             $Manifest.pre_uninstall[3] = 'Get-ChildItem "$scoopdir\apps\scoop-accelerator\current\shims" | ForEach-Object {'
             Update-Shim
