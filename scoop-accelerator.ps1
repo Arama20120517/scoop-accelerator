@@ -136,7 +136,7 @@ Add-Handler -Name 'New-Shim' -Logic {
         }
         return
     }
-    return . ${function:shim} $Path, $Global, $Name, $Arg
+    return . ${function:New-Shim} $Path, $Global, $Name, $Arg
 }
 
 Add-Handler -Name 'Invoke-HookScript' -Logic {
