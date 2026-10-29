@@ -81,13 +81,13 @@ function Script:Add-Handler {
 function Script:Update-Shim([switch]$EnableI18N) {
     Get-ChildItem "$(appdir scoop-accelerator)\current\template" | ForEach-Object {
         $content = Get-Content $_.FullName -Raw
-        $content = $content.Replace('${scoop.ps1}', ". '$(appdir scoop)\current\bin\scoop.ps1'")
-        $content = $content.Replace('${scoop-accelerator.ps1}', ". '$(appdir scoop-accelerator)\current\scoop-accelerator.ps1'")
+        $content = $content.Replace('${scoop.ps1}', "$(appdir scoop)\current\bin\scoop.ps1")
+        $content = $content.Replace('${scoop-accelerator.ps1}', "$(appdir scoop-accelerator)\current\scoop-accelerator.ps1")
         if ($EnableI18N) {
-            $content = $content.Replace('${scoop-i18n.ps1}', ". '$(appdir 'abgox.scoop-i18n')\current\app\scoop-i18n.ps1'")
+            $content = $content.Replace('${scoop-i18n.ps1}', "$(appdir 'abgox.scoop-i18n')\current\app\scoop-i18n.ps1")
         }
         else {
-            $content = $content.Replace('${scoop-i18n.ps1}', '')
+            $content = $content.Replace('${scoop-i18n.ps1}', "$(appdir scoop-accelerator)\current\scoop-i18n.ps1")
         }
         [System.IO.File]::WriteAllText("$(appdir scoop-accelerator)\current\shims\$($_.Name)", ($content -join [System.Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
     }
@@ -115,28 +115,6 @@ Add-Handler -Name 'add_bucket' -Logic {
     param($name, $repo)
     if (get_config sa-bucket-enabled $true) { $repo = Repair-URL $repo }
     return . ${function:add_bucket} $name $repo
-}
-
-Add-Handler -Name 'shim' -Logic {
-    param($path, $global, $name, $arg)
-    if ($path -eq ((versiondir 'scoop' 'current') + '\bin\scoop.ps1')) {
-        Get-ChildItem "$(appdir scoop-accelerator)\current\shims" | ForEach-Object {
-            Copy-Item $_.FullName "$scoopdir\shims" -Force
-        }
-        return
-    }
-    return . ${function:shim} $path $global $name $arg
-}
-
-Add-Handler -Name 'New-Shim' -Logic {
-    param($Path, $Global, $Name, $Arg)
-    if ($Path -eq ((versiondir 'scoop' 'current') + '\bin\scoop.ps1')) {
-        Get-ChildItem "$(appdir scoop-accelerator)\current\shims" | ForEach-Object {
-            Copy-Item $_.FullName "$scoopdir\shims" -Force
-        }
-        return
-    }
-    return . ${function:New-Shim} $Path $Global $Name $Arg
 }
 
 Add-Handler -Name 'Invoke-HookScript' -Logic {
@@ -171,4 +149,64 @@ Add-Handler -Name 'Invoke-HookScript' -Logic {
     }
 
     return . ${function:Invoke-HookScript} -HookType $HookType -Manifest $Manifest -ProcessorArchitecture $ProcessorArchitecture
+}
+
+$Script:updateShims = {
+    param([string]$Message)
+    if ($Message -notin 'Updating Buckets...', 'Scoop was updated successfully!') {
+        return
+    }
+
+    try {
+        $shimPath = "$scoopdir\shims\scoop.ps1"
+        if (-not (Test-Path -LiteralPath $shimPath)) {
+            return
+        }
+        if ((Get-Content -LiteralPath $shimPath -Raw -Encoding utf8) -like '*scoop-accelerator*') {
+            return
+        }
+        $pathList = foreach ($dir in $scoopdir, $globaldir) {
+            if ($dir) {
+                [System.IO.Path]::Combine($dir, 'apps\scoop-accelerator\current\shims')
+            }
+        }
+        foreach ($path in $pathList) {
+            if (Test-Path -LiteralPath $path) {
+                Get-ChildItem -LiteralPath $path | ForEach-Object {
+                    Copy-Item -LiteralPath $_.FullName -Destination "$scoopdir\shims" -Force
+                }
+                break
+            }
+        }
+    }
+    catch {
+        # Shim refresh is best effort and must never break Scoop output.
+    }
+}
+
+if (Test-Path Variable:\scoop-i18n) {
+    Add-Member -InputObject ${scoop-i18n} -MemberType ScriptMethod -Force UpdateShims $updateShims
+} else {
+    Set-Item -Force -Path "Function:\Script:Write-Host" -Value {
+        [CmdletBinding()]
+        param(
+            [Parameter(
+                Position = 0,
+                ValueFromPipeline = $true,
+                ValueFromRemainingArguments = $true
+            )]
+            [Alias('Msg', 'Message')]
+            $Object,
+            [switch]$NoNewline,
+            $Separator,
+            [System.ConsoleColor]$ForegroundColor,
+            [System.ConsoleColor]$BackgroundColor
+        )
+        process {
+            if ($null -ne $Object) {
+                & $updateShims $Object
+            }
+            Microsoft.PowerShell.Utility\Write-Host @PSBoundParameters
+        }
+    }
 }
